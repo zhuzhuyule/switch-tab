@@ -131,7 +131,7 @@ async function openPopup() {
 // 监听来自内容脚本的消息
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === "log") {
-    console.log(...message.message)
+    console.log("---------", ...message.message)
   }
 })
 

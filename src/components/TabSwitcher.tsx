@@ -66,9 +66,8 @@ export const TabSwitcher = ({
       }
     },
     handleKeyUp: (e: KeyboardEvent) => {
-      log("keyUp", e.key, e.code)
-      if (e.key === "Meta") {
-
+      log(activeIndex)
+      if (e.key === "Meta" && activeIndex > 1) {
         switchToSelectedTab(selectedIndex)
       }
     }
