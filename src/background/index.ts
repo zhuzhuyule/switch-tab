@@ -1,5 +1,14 @@
 import { Storage } from "@plasmohq/storage"
 
+import "@plasmohq/messaging/background"
+
+import { startHub } from "@plasmohq/messaging/pub-sub"
+
+import status from "./status"
+
+console.log(`BGSW - Starting Hub`)
+startHub()
+
 // 定义标签信息接口
 interface TabInfo {
   id: number
@@ -39,7 +48,7 @@ async function updateRecentTabs(tabInfo: TabInfo) {
 
   // 存储更新后的标签列表
   await storage.set("recentTabs", recentTabs)
-  
+
   console.log("Recent tabs updated:", recentTabs)
 }
 
@@ -48,7 +57,7 @@ chrome.tabs.onActivated.addListener(async (activeInfo) => {
   try {
     // 获取激活的标签详细信息
     const tab = await chrome.tabs.get(activeInfo.tabId)
-    
+
     // 忽略开发者工具和空白标签
     if (
       tab.url?.startsWith("chrome-devtools://") ||
@@ -79,8 +88,11 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   // 仅在标题或图标更新时处理
   if (changeInfo.title || changeInfo.favIconUrl) {
     // 检查这个标签是否是当前激活的标签
-    const currentTab = await chrome.tabs.query({ active: true, currentWindow: true })
-    
+    const currentTab = await chrome.tabs.query({
+      active: true,
+      currentWindow: true
+    })
+
     if (currentTab.length > 0 && currentTab[0].id === tabId) {
       // 创建标签信息对象
       const tabInfo: TabInfo = {
@@ -101,13 +113,13 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
 chrome.tabs.onRemoved.addListener(async (tabId) => {
   // 获取当前的标签历史
   let recentTabs = await getRecentTabs()
-  
+
   // 过滤掉关闭的标签
   recentTabs = recentTabs.filter((tab) => tab.id !== tabId)
-  
+
   // 存储更新后的标签列表
   await storage.set("recentTabs", recentTabs)
-  
+
   console.log("标签已从历史中移除:", tabId)
 })
 
@@ -116,30 +128,56 @@ async function openPopup() {
   await chrome.action.openPopup()
 }
 
+// 监听来自内容脚本的消息
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.action === "log") {
+    console.log(...message.message)
+  }
+})
+
 // 监听命令事件（快捷键）
 chrome.commands.onCommand.addListener(async (command) => {
   if (command === "toggle-recent-tabs") {
     console.log("触发了快速标签切换命令")
-    
+
+    if (status.getPopupStatus()) {
+      try {
+        const res = await chrome.runtime.sendMessage({
+          action: "changeSelectedIndex",
+          message: "Change Popup Selected Index"
+        })
+        console.log("res", res)
+        return
+      } catch (error) {
+        status.setPopupStatus(false)
+      }
+    }
+
     try {
       // 获取当前激活的标签
-      const [currentTab] = await chrome.tabs.query({ active: true, currentWindow: true })
-      
+      const [currentTab] = await chrome.tabs.query({
+        active: true,
+        currentWindow: true
+      })
+
       if (!currentTab || !currentTab.id) {
-        console.error("无法获取当前标签")
+        console.log("无法获取当前标签")
         return
       }
-      
+
       // 检查当前页面是否能使用内容脚本
-      const canUseContent = !currentTab.url.startsWith("chrome://") && 
-                           !currentTab.url.startsWith("edge://") &&
-                           !currentTab.url.startsWith("about:") &&
-                           !currentTab.url.startsWith("chrome-extension://")
-      
+      const canUseContent =
+        !currentTab.url.startsWith("chrome://") &&
+        !currentTab.url.startsWith("edge://") &&
+        !currentTab.url.startsWith("about:") &&
+        !currentTab.url.startsWith("chrome-extension://")
+
       if (canUseContent) {
         // 向内容脚本发送消息，显示标签切换界面
         try {
-          await chrome.tabs.sendMessage(currentTab.id, { action: "showRecentTabs" })
+          await chrome.tabs.sendMessage(currentTab.id, {
+            action: "showRecentTabs"
+          })
           console.log("已向内容脚本发送显示命令")
         } catch (error) {
           console.error("发送消息失败，可能内容脚本未加载:", error)
@@ -164,7 +202,7 @@ async function initialize() {
   if (!existingTabs) {
     await storage.set("recentTabs", [])
   }
-  
+
   console.log("标签历史跟踪系统已初始化")
 }
 

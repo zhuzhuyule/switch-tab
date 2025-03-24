@@ -39,22 +39,26 @@ export const getStyle = (): HTMLStyleElement => {
 
 // 内容脚本主组件
 const TabSwitcherOverlay = () => {
-  const [isVisible, setIsVisible] = useState(false)
+  const [activeIndex, setActiveIndex] = useState(0)
 
   // 处理关闭事件
   const handleClose = () => {
-    setIsVisible(false)
+    setActiveIndex(0)
   }
 
   // 监听来自背景脚本的消息
   useEffect(() => {
     const messageListener = (message, sender, sendResponse) => {
       if (message.action === "showRecentTabs") {
-        setIsVisible(true)
+        setActiveIndex(pre => pre + 1)
         sendResponse({ success: true })
         return true
       }
     }
+
+    document.addEventListener('keyup', (e) => {
+      console.log('keyup', e.key, e.code)
+    })
 
     // 添加消息监听器
     chrome.runtime.onMessage.addListener(messageListener)
@@ -66,7 +70,7 @@ const TabSwitcherOverlay = () => {
   }, [])
 
   // 只有在显示状态下才渲染切换界面
-  return isVisible ? <TabSwitcher onClose={handleClose} /> : null
+  return activeIndex > 0 ? <TabSwitcher onClose={handleClose} activeIndex={activeIndex} /> : null
 }
 
 export default TabSwitcherOverlay 
