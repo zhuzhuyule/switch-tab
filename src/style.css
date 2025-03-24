@@ -4,7 +4,36 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Shadow DOM 容器重置 */
 #plasmo-shadow-container {
   all: initial;
   box-sizing: border-box;
+}
+
+/* 弹出窗口样式重置 */
+body[data-plasmo-extension-root] {
+  margin: 0;
+  padding: 0;
+  width: 600px;
+  height: 500px;
+  overflow: hidden;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Helvetica Neue', sans-serif;
+}
+
+/* 自定义滚动条 */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
 }
