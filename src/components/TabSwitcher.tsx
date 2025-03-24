@@ -22,6 +22,21 @@ interface TabSwitcherProps {
   activeIndex?: number
 }
 
+// 生成基于域名的颜色
+const getDomainColor = (url: string) => {
+  try {
+    const hostname = new URL(url).hostname;
+    let hash = 0;
+    for (let i = 0; i < hostname.length; i++) {
+      hash = hostname.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const hue = hash % 360;
+    return `hsl(${hue}, 65%, 85%)`;
+  } catch {
+    return "#e5e7eb"; // 默认灰色
+  }
+};
+
 export const TabSwitcher = ({
   onClose,
   isPopup = false,
@@ -119,12 +134,10 @@ export const TabSwitcher = ({
       
       switch (e.key) {
         case "ArrowDown":
-        case "j":
           e.preventDefault(); // 防止页面滚动
           setSelectedIndex((prev) => (prev + 1) % filteredTabs.length);
           break;
         case "ArrowUp":
-        case "k":
           e.preventDefault(); // 防止页面滚动
           setSelectedIndex((prev) => (prev - 1 + filteredTabs.length) % filteredTabs.length);
           break;
@@ -305,13 +318,25 @@ export const TabSwitcher = ({
                     <img
                       src={tab.favIconUrl}
                       alt="标签图标"
-                      className="plasmo-w-6 plasmo-h-6 plasmo-mr-3 plasmo-rounded"
+                      className="plasmo-w-8 plasmo-h-8 plasmo-mr-3 plasmo-rounded"
                       onError={(e) => {
-                        ;(e.target as HTMLImageElement).style.display = "none"
+                        // 隐藏失败的图片
+                        (e.target as HTMLImageElement).style.display = "none";
+                        // 显示父元素中的备用内容
+                        const parentElement = (e.target as HTMLElement).parentElement;
+                        if (parentElement) {
+                          const firstChar = tab.title.trim().charAt(0);
+                          const fallbackEl = document.createElement("div");
+                          fallbackEl.className = "plasmo-w-8 plasmo-h-8 plasmo-flex plasmo-items-center plasmo-justify-center plasmo-bg-gray-200 plasmo-rounded plasmo-text-lg plasmo-font-medium plasmo-text-gray-700";
+                          fallbackEl.textContent = firstChar;
+                          parentElement.appendChild(fallbackEl);
+                        }
                       }}
                     />
                   ) : (
-                    <div className="plasmo-w-6 plasmo-h-6 plasmo-mr-3 plasmo-bg-gray-200 plasmo-rounded" />
+                    <div className="plasmo-w-8 plasmo-h-8 plasmo-mr-3 plasmo-flex plasmo-items-center plasmo-justify-center plasmo-bg-gray-200 plasmo-rounded plasmo-text-lg plasmo-font-medium plasmo-text-gray-700">
+                      {tab.title.trim().charAt(0)}
+                    </div>
                   )}
 
                   <div className="plasmo-flex-1 plasmo-min-w-0">
