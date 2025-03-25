@@ -34,15 +34,18 @@ async function getRecentTabs(): Promise<TabInfo[]> {
 async function updateTabAccessCount(tabId: number) {
   try {
     // 获取当前的访问计数
-    let tabAccessCounts = await storage.get<Record<number, number>>("tabAccessCounts") || {}
-    
+    let tabAccessCounts =
+      (await storage.get<Record<number, number>>("tabAccessCounts")) || {}
+
     // 更新当前标签的访问计数
     tabAccessCounts[tabId] = (tabAccessCounts[tabId] || 0) + 1
-    
+
     // 存储更新后的访问计数
     await storage.set("tabAccessCounts", tabAccessCounts)
-    
-    console.log(`Tab ${tabId} access count updated to ${tabAccessCounts[tabId]}`)
+
+    console.log(
+      `Tab ${tabId} access count updated to ${tabAccessCounts[tabId]}`
+    )
   } catch (error) {
     console.error("更新标签访问计数时出错:", error)
   }
@@ -66,7 +69,7 @@ async function updateRecentTabs(tabInfo: TabInfo) {
 
   // 存储更新后的标签列表
   await storage.set("recentTabs", recentTabs)
-  
+
   // 更新标签访问计数
   await updateTabAccessCount(tabInfo.id)
 
@@ -156,9 +159,46 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 })
 
+const retrySendMessage = async (
+  id: number,
+  message: any,
+  timeout = 1000,
+  retry = 5
+) => {
+  try {
+    return await chrome.tabs.sendMessage(id, message)
+  } catch (error) {
+    if (retry <= 1) {
+      throw error
+    }
+    const t = Math.max(timeout / 10, 200)
+    await new Promise((resolve) => setTimeout(resolve, t))
+    return retrySendMessage(id, message, t, retry - 1)
+  }
+}
+
+const trySendMessage = async (
+  id: number,
+  message: any,
+  timeout = 1000,
+  retry = 5
+) => {
+  return Promise.race([
+    retrySendMessage(id, message, timeout, retry),
+    new Promise((resolve, reject) => {
+      setTimeout(() => {
+        reject(new Error("发送消息超时"))
+      }, timeout)
+    })
+  ])
+}
+
+let isSendingCommand = false
+
 // 监听命令事件（快捷键）
 chrome.commands.onCommand.addListener(async (command) => {
-  if (command === "toggle-recent-tabs") {
+  if (command === "toggle-recent-tabs" && !isSendingCommand) {
+    isSendingCommand = true
     console.log("触发了快速标签切换命令")
 
     if (status.getPopupStatus()) {
@@ -167,7 +207,7 @@ chrome.commands.onCommand.addListener(async (command) => {
           action: "changeSelectedIndex",
           message: "Change Popup Selected Index"
         })
-        console.log("res", res)
+        isSendingCommand = false
         return
       } catch (error) {
         status.setPopupStatus(false)
@@ -183,22 +223,25 @@ chrome.commands.onCommand.addListener(async (command) => {
 
       if (!currentTab || !currentTab.id) {
         console.log("无法获取当前标签")
+        isSendingCommand = false
         return
       }
 
       // 检查当前页面是否能使用内容脚本
-      const canUseContent =
-        !currentTab.url.startsWith("chrome://") &&
-        !currentTab.url.startsWith("edge://") &&
-        !currentTab.url.startsWith("about:") &&
-        !currentTab.url.startsWith("chrome-extension://")
+      const regex = /^(http:\/\/|https:\/\/|ftp:\/\/|file:\/\/)/i
+
+      const canUseContent = regex.test(currentTab.url)
 
       if (canUseContent) {
         // 向内容脚本发送消息，显示标签切换界面
         try {
-          await chrome.tabs.sendMessage(currentTab.id, {
-            action: "showRecentTabs"
-          })
+          await trySendMessage(
+            currentTab.id,
+            {
+              action: "showRecentTabs"
+            },
+            800
+          ) 
           console.log("已向内容脚本发送显示命令")
         } catch (error) {
           console.error("发送消息失败，可能内容脚本未加载:", error)
@@ -213,6 +256,7 @@ chrome.commands.onCommand.addListener(async (command) => {
     } catch (error) {
       console.error("处理命令时出错:", error)
     }
+    isSendingCommand = false
   }
 })
 
@@ -223,9 +267,10 @@ async function initialize() {
   if (!existingTabs) {
     await storage.set("recentTabs", [])
   }
-  
+
   // 确保存储区有一个有效的 tabAccessCounts 对象
-  const existingAccessCounts = await storage.get<Record<number, number>>("tabAccessCounts")
+  const existingAccessCounts =
+    await storage.get<Record<number, number>>("tabAccessCounts")
   if (!existingAccessCounts) {
     await storage.set("tabAccessCounts", {})
   }
