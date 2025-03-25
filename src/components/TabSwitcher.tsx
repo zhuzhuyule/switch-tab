@@ -3,17 +3,7 @@ import { useEffect, useRef, useState } from "react"
 import { sendToBackground } from "@plasmohq/messaging"
 
 import { log } from "~debug-tool"
-
-// 定义标签信息接口
-interface TabInfo {
-  id: number
-  title: string
-  url: string
-  favIconUrl: string
-  lastAccessed?: number
-  accessCount?: number
-  windowId?: number
-}
+import { TabItem } from './TabItem'
 
 // 组件属性接口
 interface TabSwitcherProps {
@@ -21,21 +11,6 @@ interface TabSwitcherProps {
   isPopup?: boolean // 标识是否在popup中使用
   activeIndex?: number
 }
-
-// 生成基于域名的颜色
-const getDomainColor = (url: string) => {
-  try {
-    const hostname = new URL(url).hostname;
-    let hash = 0;
-    for (let i = 0; i < hostname.length; i++) {
-      hash = hostname.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    const hue = hash % 360;
-    return `hsl(${hue}, 65%, 85%)`;
-  } catch {
-    return "#e5e7eb"; // 默认灰色
-  }
-};
 
 export const TabSwitcher = ({
   onClose,
@@ -300,60 +275,14 @@ export const TabSwitcher = ({
             {filteredTabs.map((tab, index) => {
               const isRecent = recentTabIds.includes(tab.id);
               return (
-                <li
+                <TabItem
                   key={tab.id}
-                  className={`plasmo-flex plasmo-items-center plasmo-p-3 plasmo-border-b plasmo-border-gray-100 plasmo-cursor-pointer hover:plasmo-bg-gray-50 ${
-                    selectedIndex === index ? "plasmo-bg-blue-100" : ""
-                  } ${isRecent && selectedIndex !== index ? "plasmo-bg-blue-50 plasmo-bg-opacity-30" : ""}`}
-                  onClick={(e) => handleTabClick(index, e)}>
-                  <div className="plasmo-flex plasmo-items-center plasmo-w-8 plasmo-h-8 plasmo-mr-3 plasmo-justify-center">
-                    <span className={`plasmo-inline-block plasmo-w-6 plasmo-h-6 plasmo-text-center plasmo-font-bold plasmo-rounded-full plasmo-leading-6 ${
-                      isRecent ? "plasmo-text-white plasmo-bg-blue-500" : "plasmo-text-gray-500 plasmo-bg-gray-200"
-                    }`}>
-                      {index + 1}
-                    </span>
-                  </div>
-
-                  {tab.favIconUrl ? (
-                    <img
-                      src={tab.favIconUrl}
-                      alt="标签图标"
-                      className="plasmo-w-8 plasmo-h-8 plasmo-mr-3 plasmo-rounded"
-                      onError={(e) => {
-                        // 隐藏失败的图片
-                        (e.target as HTMLImageElement).style.display = "none";
-                        // 显示父元素中的备用内容
-                        const parentElement = (e.target as HTMLElement).parentElement;
-                        if (parentElement) {
-                          const firstChar = tab.title.trim().charAt(0);
-                          const fallbackEl = document.createElement("div");
-                          fallbackEl.className = "plasmo-w-8 plasmo-h-8 plasmo-flex plasmo-items-center plasmo-justify-center plasmo-bg-gray-200 plasmo-rounded plasmo-text-lg plasmo-font-medium plasmo-text-gray-700";
-                          fallbackEl.textContent = firstChar;
-                          parentElement.appendChild(fallbackEl);
-                        }
-                      }}
-                    />
-                  ) : (
-                    <div className="plasmo-w-8 plasmo-h-8 plasmo-mr-3 plasmo-flex plasmo-items-center plasmo-justify-center plasmo-bg-gray-200 plasmo-rounded plasmo-text-lg plasmo-font-medium plasmo-text-gray-700">
-                      {tab.title.trim().charAt(0)}
-                    </div>
-                  )}
-
-                  <div className="plasmo-flex-1 plasmo-min-w-0">
-                    <div className="plasmo-truncate plasmo-font-medium plasmo-text-gray-800">
-                      {tab.title}
-                    </div>
-                    <div className="plasmo-truncate plasmo-text-xs plasmo-text-gray-500">
-                      {tab.url}
-                    </div>
-                  </div>
-                  
-                  {tab.accessCount !== undefined && (
-                    <div className="plasmo-ml-2 plasmo-text-xs plasmo-text-gray-500 plasmo-bg-gray-100 plasmo-px-2 plasmo-py-1 plasmo-rounded">
-                      访问: {tab.accessCount}
-                    </div>
-                  )}
-                </li>
+                  tab={tab}
+                  index={index}
+                  selectedIndex={selectedIndex}
+                  isRecent={isRecent}
+                  handleTabClick={handleTabClick}
+                />               
               );
             })}
           </ul>

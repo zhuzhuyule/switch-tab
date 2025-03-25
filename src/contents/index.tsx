@@ -7,6 +7,7 @@ import { TabSwitcher } from "~components/TabSwitcher"
 // 内容脚本配置，匹配所有URL
 export const config: PlasmoCSConfig = {
   matches: ["<all_urls>"],
+  run_at: "document_start",
   all_frames: false
 }
 

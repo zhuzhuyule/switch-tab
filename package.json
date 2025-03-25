@@ -39,8 +39,8 @@
     "commands": {
       "toggle-recent-tabs": {
         "suggested_key": {
-          "default": "Alt+Q",
-          "mac": "Alt+Q"
+          "default": "Ctrl+E",
+          "mac": "Ctrl+E"
         },
         "description": "显示最近访问的标签页"
       }
