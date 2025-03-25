@@ -34,6 +34,7 @@
     "permissions": [
       "tabs",
       "commands",
+      "scripting",
       "storage"
     ],
     "commands": {

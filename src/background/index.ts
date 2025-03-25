@@ -144,6 +144,46 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 })
 
+async function sendMessageToContentScript(tabId, message) {
+  try {
+    // 尝试发送消息
+    return await chrome.tabs.sendMessage(tabId, message);
+  } catch (error) {
+    console.error("发送消息失败:", error);
+    
+    // 检查是否是因为内容脚本未加载
+    if (error.message.includes("Could not establish connection") ||
+        error.message.includes("No tab with id") ||
+        error.message.includes("Receiving end does not exist")) {
+      
+      // 尝试注入内容脚本
+      console.log("尝试动态注入内容脚本...");
+      try {
+        // 获取 mainfest.json 中配置了 content_scripts 的 js 文件
+        const manifest = chrome.runtime.getManifest()
+        const contentFile = manifest.content_scripts[0].js
+
+        // 注入内容脚本
+        await chrome.scripting.executeScript({
+          target: { tabId },
+          files: contentFile // 或者您内容脚本的实际路径
+        });
+        
+        // 给脚本一点时间初始化
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        // 重新尝试发送消息
+        return await chrome.tabs.sendMessage(tabId, message);
+      } catch (injectionError) {
+        console.error("注入内容脚本失败:", injectionError);
+        throw injectionError;
+      }
+    }
+    
+    throw error;
+  }
+}
+
 const retrySendMessage = async (
   id: number,
   message: any,
@@ -151,7 +191,7 @@ const retrySendMessage = async (
   retry = 5
 ) => {
   try {
-    return await chrome.tabs.sendMessage(id, message)
+    return await sendMessageToContentScript(id, message)
   } catch (error) {
     if (retry <= 1) {
       throw error
