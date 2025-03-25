@@ -18,3 +18,11 @@ interface TabInfo {
   favIconUrl: string
   lastAccessed: number
 }
+
+interface BookmarkInfo {
+  id: string
+  title: string
+  url: string
+  dateAdded?: number
+  type: 'bookmark'
+}

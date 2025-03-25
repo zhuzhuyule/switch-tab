@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react"
-import { sendToBackground } from '@plasmohq/messaging'
+
+import { sendToBackground } from "@plasmohq/messaging"
 
 // 生成基于域名的颜色
 const getDomainColor = (url: string) => {
@@ -16,7 +17,7 @@ const getDomainColor = (url: string) => {
   }
 }
 
-// 根据访问次数生成标签颜色 
+// 根据访问次数生成标签颜色
 // 颜色有浅（浅灰）到亮色（绿色）
 const getTagColor = (times: number) => {
   if (times < 10) {
@@ -49,15 +50,17 @@ export const TabItem = ({
   const [loadImageFailed, setLoadImageFailed] = useState(false)
   const [iconData, setIconData] = useState<string | null>(null)
   useEffect(() => {
-    sendToBackground({
-      name: "getTabIcon",
-      body: { url: tab.favIconUrl }
-    }).then(({ success, icon }) => {
-      if (success) {
-        setLoadImageFailed(false)
-        setIconData(icon?.data)
-      }
-    })
+    if (tab.favIconUrl) {
+      sendToBackground({
+        name: "getTabIcon",
+        body: { url: tab.favIconUrl }
+      }).then(({ success, icon }) => {
+        if (success) {
+          setLoadImageFailed(false)
+          setIconData(icon?.data)
+        }
+      })
+    }
   }, [tab.favIconUrl])
 
   return (

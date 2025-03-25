@@ -33,6 +33,7 @@
     ],
     "permissions": [
       "tabs",
+      "bookmarks",
       "commands",
       "scripting",
       "storage"
