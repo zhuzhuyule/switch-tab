@@ -1,22 +1,7 @@
 import { Storage } from "@plasmohq/storage"
-
 import "@plasmohq/messaging/background"
-
-import { startHub } from "@plasmohq/messaging/pub-sub"
-
+import { cleanupIconCache } from "./services/iconService"
 import status from "./status"
-
-console.log(`BGSW - Starting Hub`)
-startHub()
-
-// 定义标签信息接口
-interface TabInfo {
-  id: number
-  title: string
-  url: string
-  favIconUrl: string
-  lastAccessed: number
-}
 
 // 设置最大记录的标签数量
 const MAX_RECENT_TABS = 6
@@ -241,7 +226,7 @@ chrome.commands.onCommand.addListener(async (command) => {
               action: "showRecentTabs"
             },
             800
-          ) 
+          )
           console.log("已向内容脚本发送显示命令")
         } catch (error) {
           console.error("发送消息失败，可能内容脚本未加载:", error)
@@ -274,6 +259,12 @@ async function initialize() {
   if (!existingAccessCounts) {
     await storage.set("tabAccessCounts", {})
   }
+
+  // 清理图标缓存
+  await cleanupIconCache()
+
+  // 设置每天清理一次缓存
+  setInterval(cleanupIconCache, 24 * 60 * 60 * 1000)
 
   console.log("标签历史跟踪系统已初始化")
 }

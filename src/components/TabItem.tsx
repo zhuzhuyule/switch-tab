@@ -1,4 +1,5 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
+import { sendToBackground } from '@plasmohq/messaging'
 
 // 生成基于域名的颜色
 const getDomainColor = (url: string) => {
@@ -46,6 +47,18 @@ export const TabItem = ({
   selectedIndex
 }: TabItemProps) => {
   const [loadImageFailed, setLoadImageFailed] = useState(false)
+  const [iconData, setIconData] = useState<string | null>(null)
+  useEffect(() => {
+    sendToBackground({
+      name: "getTabIcon",
+      body: { url: tab.favIconUrl }
+    }).then(({ success, icon }) => {
+      if (success) {
+        setLoadImageFailed(false)
+        setIconData(icon?.data)
+      }
+    })
+  }, [tab.favIconUrl])
 
   return (
     <li
@@ -65,9 +78,9 @@ export const TabItem = ({
         </span>
       </div>
 
-      {tab.favIconUrl && !loadImageFailed ? (
+      {iconData && !loadImageFailed ? (
         <img
-          src={tab.favIconUrl}
+          src={iconData}
           alt="标签图标"
           className="plasmo-w-8 plasmo-h-8 plasmo-mr-3 plasmo-rounded"
           onError={() => setLoadImageFailed(true)}

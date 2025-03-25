@@ -1,7 +1,5 @@
 import { useEffect, useRef, useState } from "react"
-
 import { sendToBackground } from "@plasmohq/messaging"
-
 import { log } from "~debug-tool"
 import { TabItem } from './TabItem'
 
