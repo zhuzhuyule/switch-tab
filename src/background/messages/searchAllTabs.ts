@@ -23,13 +23,14 @@ const handler: PlasmoMessaging.MessageHandler = async (req, res) => {
     
     // 获取最近访问的标签列表（用于获取访问时间和次数信息）
     const recentTabs = await storage.get<TabInfo[]>("recentTabs") || []
-    const tabAccessCounts = await storage.get<Record<number, number>>("tabAccessCounts") || {}
+    const tabAccessCounts = await storage.get<Record<string, number>>("tabAccessCounts") || {}
     
     // 将标签信息转换为所需格式，并添加最近访问时间和访问次数
     const tabInfoList: TabInfo[] = tabs.map(tab => {
       // 查找对应的最近访问标签
       const recentTab = recentTabs.find(rt => rt.id === tab.id)
-      
+      const url = new URL(tab.url)
+      const hostWithPath = `${url.host}${url.pathname}`
       return {
         id: tab.id,
         title: tab.title || "无标题",
@@ -37,7 +38,7 @@ const handler: PlasmoMessaging.MessageHandler = async (req, res) => {
         favIconUrl: tab.favIconUrl || "",
         windowId: tab.windowId,
         lastAccessed: recentTab?.lastAccessed || 0,
-        accessCount: tabAccessCounts[tab.id] || 0
+        accessCount: tabAccessCounts[hostWithPath] || 0
       }
     })
     

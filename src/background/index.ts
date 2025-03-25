@@ -16,20 +16,22 @@ async function getRecentTabs(): Promise<TabInfo[]> {
 }
 
 // 初始化或更新标签访问计数
-async function updateTabAccessCount(tabId: number) {
+async function updateTabAccessCount(tabUrl: string) {
   try {
+    const url = new URL(tabUrl)
+    const hostWithPath = `${url.host}${url.pathname}`
     // 获取当前的访问计数
     let tabAccessCounts =
       (await storage.get<Record<number, number>>("tabAccessCounts")) || {}
 
     // 更新当前标签的访问计数
-    tabAccessCounts[tabId] = (tabAccessCounts[tabId] || 0) + 1
+    tabAccessCounts[hostWithPath] = (tabAccessCounts[hostWithPath] || 0) + 1
 
     // 存储更新后的访问计数
     await storage.set("tabAccessCounts", tabAccessCounts)
 
     console.log(
-      `Tab ${tabId} access count updated to ${tabAccessCounts[tabId]}`
+      `Tab ${tabUrl} access count updated to ${tabAccessCounts[hostWithPath]}`
     )
   } catch (error) {
     console.error("更新标签访问计数时出错:", error)
@@ -56,7 +58,7 @@ async function updateRecentTabs(tabInfo: TabInfo) {
   await storage.set("recentTabs", recentTabs)
 
   // 更新标签访问计数
-  await updateTabAccessCount(tabInfo.id)
+  await updateTabAccessCount(tabInfo.url)
 
   console.log("Recent tabs updated:", recentTabs)
 }
@@ -295,7 +297,8 @@ async function initialize() {
 
   // 确保存储区有一个有效的 tabAccessCounts 对象
   const existingAccessCounts =
-    await storage.get<Record<number, number>>("tabAccessCounts")
+    await storage.get<Record<string, number>>("tabAccessCounts")
+    
   if (!existingAccessCounts) {
     await storage.set("tabAccessCounts", {})
   }
