@@ -21,7 +21,6 @@ export const TabSwitcher = ({
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedIndex, setSelectedIndex] = useState(0)
   const [recentTabIds, setRecentTabIds] = useState<number[]>([])
-  const containerRef = useRef<HTMLDivElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
   const eventRef = useRef<{
     handleKeyDown: (e: KeyboardEvent) => void
@@ -224,10 +223,18 @@ export const TabSwitcher = ({
     ? "plasmo-flex plasmo-flex-col plasmo-w-[600px] plasmo-max-w-full plasmo-max-h-full plasmo-overflow-hidden"
     : "plasmo-fixed plasmo-inset-0 plasmo-flex plasmo-items-center plasmo-justify-center plasmo-bg-black plasmo-bg-opacity-50 plasmo-z-50";
 
+  const [isVisible, setIsVisible] = useState(false)
+  useEffect(() => {
+    setIsVisible(true)
+    setTimeout(() => {
+      setIsVisible(true)
+    }, 500)
+  }, [])
+
   // 定义列表容器样式类名
   const listContainerClassName = isPopup
-    ? "plasmo-w-full plasmo-h-full plasmo-flex plasmo-flex-col plasmo-bg-white plasmo-overflow-hidden plasmo-rounded-lg"
-    : "plasmo-w-[600px] plasmo-max-w-[80vw] plasmo-bg-white plasmo-rounded-lg plasmo-shadow-xl plasmo-overflow-hidden";
+    ? "plasmo-w-full plasmo-h-full plasmo-flex plasmo-flex-col plasmo-bg-white plasmo-overflow-hidden plasmo-rounded-lg custom-base"
+    : "plasmo-w-[600px] plasmo-max-w-[80vw] plasmo-bg-white plasmo-rounded-lg plasmo-shadow-xl plasmo-overflow-hidden"
 
   // 定义列表样式类名
   const listClassName = isPopup
@@ -242,8 +249,8 @@ export const TabSwitcher = ({
           onClose();
         }
       }}>
-      <div ref={containerRef} className={listContainerClassName}>
-        <div className="plasmo-p-4 plasmo-bg-gray-100 plasmo-border-b plasmo-border-gray-200">
+      <div className={listContainerClassName + ` custom-base ${isVisible ? 'custom-show' : ''}`}>
+        <div className="plasmo-p-4 plasmo-bg-gray-100 plasmo-border-b plasmo-border-gray-200 xxxxx">
           <div className="plasmo-relative">
             <input
               ref={searchInputRef}
