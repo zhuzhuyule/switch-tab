@@ -42,9 +42,16 @@
       "toggle-recent-tabs": {
         "suggested_key": {
           "default": "Ctrl+E",
-          "mac": "Ctrl+E"
+          "mac": "Command+E"
         },
-        "description": "显示最近访问的标签页"
+        "description": "快速在当前标签和最近使用的标签之间切换"
+      },
+      "open-search-ui": {
+        "suggested_key": {
+          "default": "Ctrl+O",
+          "mac": "Ctrl+O"
+        },
+        "description": "打开最近标签/书签搜索界面"
       }
     }
   }

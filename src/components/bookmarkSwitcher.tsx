@@ -29,9 +29,11 @@ export const TabSwitcher = ({
 }: TabSwitcherProps) => {
   // 状态管理
   const [tabs, setTabs] = useState<TabInfo[]>([])
+  const [bookmarks, setBookmarks] = useState<BookmarkInfo[]>([])
   const [filteredItems, setFilteredItems] = useState<
     (TabInfo | BookmarkInfo)[]
   >([])
+  const [searchTerm, setSearchTerm] = useState("")
   const [selectedIndex, setSelectedIndex] = useState(0)
   const [recentTabIds, setRecentTabIds] = useState<number[]>([])
   const searchInputRef = useRef<HTMLInputElement>(null)
@@ -64,8 +66,26 @@ export const TabSwitcher = ({
   useEffect(() => {
     // 如果没有搜索词，只显示最近的标签
     (async () => {
+      if (!searchTerm.trim()) {
+        const recentTabs = tabs
+          .filter((tab) => recentTabIds.includes(tab.id))
+          .sort((a, b) => recentTabIds.indexOf(a.id) - recentTabIds.indexOf(b.id))
+        setFilteredItems(recentTabs)
+        return
+      }
+  
+      // 否则，搜索标签和书签
+      const term = searchTerm.toLowerCase()
+  
+      // 过滤并排序标签
+      const filteredTabs = tabs.filter(
+        (tab) =>
+          tab.title.toLowerCase().includes(term) ||
+          new URL(tab.url).hostname.toLowerCase().includes(term)
+      )
+  
       // 合并结果，标签优先显示
-      const allItems = [...tabs]
+      const allItems = [...filteredTabs]
   
       // 排序：先最近标签，再其他标签，最后书签
       allItems.sort((a, b) => {
@@ -97,10 +117,18 @@ export const TabSwitcher = ({
         return a.title.localeCompare(b.title)
       })
 
-      setFilteredItems(allItems.slice(1, 7))
+      // const bookmarkResponse = await sendToBackground({
+      //   name: "getBookmarks",
+      //   body: { text: term }
+      // })
+      // if (bookmarkResponse.success) {
+      //   allItems.push(...bookmarkResponse.bookmarks)
+      // }
+  
+      setFilteredItems(allItems)
       setSelectedIndex(0)
     })()
-  }, [tabs,  recentTabIds])
+  }, [searchTerm, tabs, bookmarks, recentTabIds])
 
   // 处理选中项的切换
   const handleItemSelect = async (index: number) => {
@@ -137,7 +165,11 @@ export const TabSwitcher = ({
     handleKeyDown: (e: KeyboardEvent) => {
       // 数字键 1-9 直接选择对应索引的标签
       // 如果不在搜索框中，或在搜索框但没有文本
-      if (document.activeElement !== searchInputRef.current || /^[1-9]$/.test(e.key)) {
+      if (
+        (document.activeElement !== searchInputRef.current ||
+          (document.activeElement === searchInputRef.current && !searchTerm)) &&
+        /^[1-9]$/.test(e.key)
+      ) {
         const num = parseInt(e.key)
         if (num >= 1 && num <= Math.min(9, filteredItems.length)) {
           setSelectedIndex(num - 1)
@@ -171,7 +203,13 @@ export const TabSwitcher = ({
           handleItemSelect(selectedIndex)
           break
         case "Escape":
-          onClose()
+          if (searchTerm) {
+            // 如果有搜索内容，先清空搜索
+            setSearchTerm("")
+            searchInputRef.current?.focus()
+          } else {
+            onClose()
+          }
           break
         case "/":
           // 快速聚焦到搜索框
@@ -184,7 +222,7 @@ export const TabSwitcher = ({
     },
     handleKeyUp: (e: KeyboardEvent) => {
       log(activeIndex)
-      if (e.key === "Meta" ) {
+      if (e.key === "Meta" && activeIndex > 1) {
         handleItemSelect(selectedIndex)
       }
     }
@@ -238,7 +276,16 @@ export const TabSwitcher = ({
 
   // 渲染列表项
   const renderItem = (item, index) => {
+    const isBookmark = "type" in item && item.type === "bookmark"
+
     const isRecent = recentTabIds.includes(item.id)
+    const tab = !isBookmark ? item : {
+      id: item.id,
+      title: item.title,
+      url: item.url,
+      favIconUrl: item.favIconUrl,
+      lastAccessed: ""
+    }
     return (
       <TabItem
         key={item.id}
@@ -264,18 +311,50 @@ export const TabSwitcher = ({
           listContainerClassName +
           ` custom-base ${isVisible ? "custom-show" : ""}`
         }>
+        <div className="plasmo-p-4 plasmo-bg-gray-100 plasmo-border-b plasmo-border-gray-200">
+          <div className="plasmo-relative">
+            <input
+              ref={searchInputRef}
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="搜索标签和书签..."
+              className="plasmo-w-full plasmo-p-2 plasmo-pl-8 plasmo-border plasmo-border-gray-300 plasmo-rounded plasmo-text-sm focus:plasmo-outline-none focus:plasmo-ring-2 focus:plasmo-ring-blue-500"
+            />
+            <svg
+              className="plasmo-absolute plasmo-left-2.5 plasmo-top-2.5 plasmo-h-4 plasmo-w-4 plasmo-text-gray-400"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              />
+            </svg>
+          </div>
+        </div>
 
         {filteredItems.length === 0 ? (
           <div className="plasmo-p-8 plasmo-text-center plasmo-text-gray-500">
             {tabs.length === 0
               ? "没有标签记录"
-              : "输入关键词搜索标签"}
+              : searchTerm
+                ? "没有匹配的标签"
+                : "输入关键词搜索标签"}
           </div>
         ) : (
           <div className={listClassName}>
             {filteredItems.map((item, index) => renderItem(item, index))}
           </div>
         )}
+
+        <div className="plasmo-p-3 plasmo-bg-gray-50 plasmo-text-center plasmo-text-xs plasmo-text-gray-500">
+          方向键↑↓导航 • / 聚焦搜索 • 数字键(1-
+          {Math.min(9, filteredItems.length)})直接选择 • ESC 取消
+        </div>
       </div>
     </div>
   )

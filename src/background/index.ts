@@ -4,7 +4,7 @@ import { cleanupIconCache } from "./services/iconService"
 import status from "./status"
 
 // 设置最大记录的标签数量
-const MAX_RECENT_TABS = 6
+const MAX_RECENT_TABS = 8
 
 // 初始化存储实例，使用 local 存储区域
 const storage = new Storage({ area: "local" })
