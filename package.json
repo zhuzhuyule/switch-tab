@@ -1,7 +1,7 @@
 {
   "name": "recent-switch",
   "displayName": "Recent switch",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "快速切换最近打开的标签",
   "author": "zac(zhuzhuyule@126.com)",
   "scripts": {
