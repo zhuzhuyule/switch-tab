@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 
 import { sendToBackground } from "@plasmohq/messaging"
 
@@ -35,13 +35,6 @@ export const TabSwitcher = ({
   const [selectedIndex, setSelectedIndex] = useState(0)
   const [recentTabIds, setRecentTabIds] = useState<number[]>([])
   const searchInputRef = useRef<HTMLInputElement>(null)
-  const eventRef = useRef<{
-    handleKeyDown: (e: KeyboardEvent) => void
-    handleKeyUp: (e: KeyboardEvent) => void
-  }>({
-    handleKeyDown: () => {},
-    handleKeyUp: () => {}
-  })
   const itemRefs = useRef<{ [key: number]: React.RefObject<HTMLDivElement> }>(
     {}
   )
@@ -133,62 +126,63 @@ export const TabSwitcher = ({
     searchInputRef.current?.focus()
   }, [])
 
-  eventRef.current = {
-    handleKeyDown: (e: KeyboardEvent) => {
-      // 数字键 1-9 直接选择对应索引的标签
-      // 如果不在搜索框中，或在搜索框但没有文本
-      if (document.activeElement !== searchInputRef.current || /^[1-9]$/.test(e.key)) {
-        const num = parseInt(e.key)
-        if (num >= 1 && num <= Math.min(9, filteredItems.length)) {
-          setSelectedIndex(num - 1)
-          handleItemSelect(num - 1)
-          return
-        }
-      }
-
-      // 如果焦点在搜索框中且不是导航键，不处理
-      if (
-        document.activeElement === searchInputRef.current &&
-        !["ArrowDown", "ArrowUp", "Enter", "Escape"].includes(e.key)
-      ) {
+  // 使用useCallback确保事件处理函数能访问最新状态
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    // 数字键 1-9 直接选择对应索引的标签
+    // 如果不在搜索框中，或在搜索框但没有文本
+    if (document.activeElement !== searchInputRef.current || /^[1-9]$/.test(e.key)) {
+      const num = parseInt(e.key)
+      if (num >= 1 && num <= Math.min(9, filteredItems.length)) {
+        setSelectedIndex(num - 1)
+        handleItemSelect(num - 1)
         return
       }
-
-      if (filteredItems.length === 0) return
-
-      switch (e.key) {
-        case "ArrowDown":
-          e.preventDefault() // 防止页面滚动
-          setSelectedIndex((prev) => (prev + 1) % filteredItems.length)
-          break
-        case "ArrowUp":
-          e.preventDefault() // 防止页面滚动
-          setSelectedIndex(
-            (prev) => (prev - 1 + filteredItems.length) % filteredItems.length
-          )
-          break
-        case "Enter":
-          handleItemSelect(selectedIndex)
-          break
-        case "Escape":
-          onClose()
-          break
-        case "/":
-          // 快速聚焦到搜索框
-          if (document.activeElement !== searchInputRef.current) {
-            e.preventDefault()
-            searchInputRef.current?.focus()
-          }
-          break
-      }
-    },
-    handleKeyUp: (e: KeyboardEvent) => {
-      log(activeIndex)
-      if (e.key === "Meta" ) {
-        handleItemSelect(selectedIndex)
-      }
     }
-  }
+
+    // 如果焦点在搜索框中且不是导航键，不处理
+    if (
+      document.activeElement === searchInputRef.current &&
+      !["ArrowDown", "ArrowUp", "Enter", "Escape"].includes(e.key)
+    ) {
+      return
+    }
+
+    if (filteredItems.length === 0) return
+
+    switch (e.key) {
+      case "ArrowDown":
+        e.preventDefault() // 防止页面滚动
+        setSelectedIndex((prev) => (prev + 1) % filteredItems.length)
+        break
+      case "ArrowUp":
+        e.preventDefault() // 防止页面滚动
+        setSelectedIndex(
+          (prev) => (prev - 1 + filteredItems.length) % filteredItems.length
+        )
+        break
+      case "Enter":
+        handleItemSelect(selectedIndex)
+        break
+      case "Escape":
+        onClose()
+        break
+      case "/":
+        // 快速聚焦到搜索框
+        if (document.activeElement !== searchInputRef.current) {
+          e.preventDefault()
+          searchInputRef.current?.focus()
+        }
+        break
+    }
+  }, [filteredItems, selectedIndex, handleItemSelect, onClose])
+
+  const handleKeyUp = useCallback((e: KeyboardEvent) => {
+    log(activeIndex)
+    // 支持Mac的Cmd键(Meta) 和 Windows的Ctrl键(Control)
+    if (e.key === "Meta" || e.key === "Control") {
+      handleItemSelect(selectedIndex)
+    }
+  }, [activeIndex, selectedIndex, handleItemSelect])
 
   useEffect(() => {
     if (activeIndex > 0 && filteredItems.length > 0) {
@@ -200,10 +194,6 @@ export const TabSwitcher = ({
   useEffect(() => {
     // 处理键盘事件
     log("bind")
-    const handleKeyDown = (e: KeyboardEvent) =>
-      eventRef.current.handleKeyDown(e)
-    const handleKeyUp = (e: KeyboardEvent) => eventRef.current.handleKeyUp(e)
-
     document.addEventListener("keydown", handleKeyDown)
     document.addEventListener("keyup", handleKeyUp)
 
@@ -211,7 +201,7 @@ export const TabSwitcher = ({
       document.removeEventListener("keydown", handleKeyDown)
       document.removeEventListener("keyup", handleKeyUp)
     }
-  }, [])
+  }, [handleKeyDown, handleKeyUp])
 
   // 定义容器样式类名
   const containerClassName = isPopup
