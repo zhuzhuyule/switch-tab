@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { sendToBackground } from "@plasmohq/messaging"
 import { TabSwitcher } from "~components/TabSwitcher"
 import "~style.css"
@@ -8,6 +8,7 @@ function IndexPopup() {
   const [activeIndex, setActiveIndex] = useState(0)
 
   useEffect(() => {
+    window.focus()
     const closePopup = () => {
       sendToBackground({ name: "updatePopupOpen", body: { isOpen: false } })
     }
@@ -32,10 +33,10 @@ function IndexPopup() {
     }
   }, [])
 
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     setActiveIndex(0)
     window.close()
-  }
+  }, [])
 
   return (
     <div className="plasmo-flex plasmo-items-center plasmo-justify-center plasmo-w-full plasmo-h-full plasmo-bg-white">
