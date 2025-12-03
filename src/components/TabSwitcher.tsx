@@ -12,6 +12,7 @@ interface TabSwitcherProps {
   onClose: () => void
   isPopup?: boolean // 标识是否在popup中使用
   activeIndex?: number
+  autoSelectSignal?: number
 }
 
 interface BookmarkInfo {
@@ -25,7 +26,8 @@ interface BookmarkInfo {
 export const TabSwitcher = ({
   onClose,
   isPopup = false,
-  activeIndex = 0
+  activeIndex = 0,
+  autoSelectSignal = 0
 }: TabSwitcherProps) => {
   // 状态管理
   const [tabs, setTabs] = useState<TabInfo[]>([])
@@ -34,6 +36,8 @@ export const TabSwitcher = ({
   >([])
   const [selectedIndex, setSelectedIndex] = useState(0)
   const [recentTabIds, setRecentTabIds] = useState<number[]>([])
+  const [displayLimit, setDisplayLimit] = useState(6)
+  const [autoSelectPending, setAutoSelectPending] = useState(false)
   const searchInputRef = useRef<HTMLInputElement>(null)
   const itemRefs = useRef<{ [key: number]: React.RefObject<HTMLDivElement> }>(
     {}
@@ -42,11 +46,18 @@ export const TabSwitcher = ({
   // 获取所有标签和书签
   const fetchAllItems = async () => {
     try {
-      // 获取标签
-      const tabResponse = await sendToBackground({ name: "searchAllTabs" })
+      const [tabResponse, settingResponse] = await Promise.all([
+        sendToBackground({ name: "searchAllTabs" }),
+        sendToBackground({ name: "getSettings" }).catch(() => null)
+      ])
+
       if (tabResponse.success && tabResponse.tabs.length > 0) {
         setTabs(tabResponse.tabs)
         setRecentTabIds(tabResponse.recentTabs || [])
+      }
+
+      if (settingResponse?.success && settingResponse.settings?.displayLimit) {
+        setDisplayLimit(settingResponse.settings.displayLimit)
       }
     } catch (error) {
       console.error("获取数据时出错:", error)
@@ -86,14 +97,14 @@ export const TabSwitcher = ({
           }
         }
   
-        // 默认按标题排序
-        return a.title.localeCompare(b.title)
-      })
+      // 默认按标题排序
+      return a.title.localeCompare(b.title)
+    })
 
-      setFilteredItems(allItems.slice(1, 7))
+      setFilteredItems(allItems.slice(1, displayLimit + 1))
       setSelectedIndex(0)
     })()
-  }, [tabs,  recentTabIds])
+  }, [tabs,  recentTabIds, displayLimit])
 
   // 处理选中项的切换
   const handleItemSelect = async (index: number) => {
@@ -180,15 +191,39 @@ export const TabSwitcher = ({
     log(activeIndex)
     // 支持Mac的Cmd键(Meta) 和 Windows的Ctrl键(Control)
     if (e.key === "Meta" || e.key === "Control") {
-      handleItemSelect(selectedIndex)
+      if (filteredItems.length > 0) {
+        handleItemSelect(selectedIndex)
+      } else {
+        setAutoSelectPending(true)
+      }
     }
-  }, [activeIndex, selectedIndex, handleItemSelect])
+  }, [activeIndex, selectedIndex, filteredItems.length, handleItemSelect])
 
   useEffect(() => {
     if (activeIndex > 0 && filteredItems.length > 0) {
       setSelectedIndex((prev) => (prev + 1) % filteredItems.length)
     }
   }, [activeIndex])
+
+  // 当捕获到修饰键松开信号时，若数据已就绪则立刻选择，否则等待数据就绪
+  useEffect(() => {
+    if (autoSelectSignal === 0) return
+
+    if (filteredItems.length > 0) {
+      handleItemSelect(selectedIndex)
+      setAutoSelectPending(false)
+    } else {
+      setAutoSelectPending(true)
+    }
+  }, [autoSelectSignal, filteredItems.length, selectedIndex, handleItemSelect])
+
+  // 等待中的自动选择在数据到达后执行
+  useEffect(() => {
+    if (autoSelectPending && filteredItems.length > 0) {
+      handleItemSelect(selectedIndex)
+      setAutoSelectPending(false)
+    }
+  }, [autoSelectPending, filteredItems, selectedIndex, handleItemSelect])
 
   // 设置和清理事件监听器
   useEffect(() => {
@@ -228,7 +263,9 @@ export const TabSwitcher = ({
 
   // 渲染列表项
   const renderItem = (item, index) => {
-    const isRecent = recentTabIds.includes(item.id)
+    const tabId = "tabId" in item ? item.tabId : item.id
+    const isRecent =
+      typeof tabId === "number" && recentTabIds.includes(tabId as number)
     return (
       <TabItem
         key={item.id}
