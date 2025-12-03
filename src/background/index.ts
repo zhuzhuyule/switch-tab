@@ -49,6 +49,11 @@ async function updateRecentTabs(tabInfo: TabInfo) {
   // 将当前标签添加到列表开头
   recentTabs.unshift(tabInfo)
 
+  // 始终按最后访问时间排序，避免事件顺序异常导致的记录错误
+  recentTabs = recentTabs.sort(
+    (a, b) => (b.lastAccessed || 0) - (a.lastAccessed || 0)
+  )
+
   // 如果超过最大数量，删除最后一个
   if (recentTabs.length > MAX_RECENT_TABS) {
     recentTabs = recentTabs.slice(0, MAX_RECENT_TABS)
@@ -84,7 +89,7 @@ chrome.tabs.onActivated.addListener(async (activeInfo) => {
       title: tab.title || "无标题",
       url: tab.url || "",
       favIconUrl: tab.favIconUrl || "",
-      lastAccessed: Date.now()
+      lastAccessed: tab.lastAccessed || Date.now()
     }
 
     // 更新最近标签列表
@@ -111,7 +116,7 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
         title: tab.title || "无标题",
         url: tab.url || "",
         favIconUrl: tab.favIconUrl || "",
-        lastAccessed: Date.now()
+        lastAccessed: tab.lastAccessed || Date.now()
       }
 
       // 更新最近标签列表
