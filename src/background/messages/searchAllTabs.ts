@@ -54,12 +54,13 @@ const handler: PlasmoMessaging.MessageHandler = async (req, res) => {
     const sortedTabInfos = tabInfoList.sort(
       (a, b) => (b.lastAccessed || 0) - (a.lastAccessed || 0)
     )
-
+    
     // 发送响应
     res.send({
       success: true,
       tabs: sortedTabInfos,
-      recentTabs: sortedTabInfos.slice(0, 6).map(tab => tab.id) // 最近的6个标签ID
+      // 返回完整的最近顺序（不截断），避免后面的标签失去“最近”标记
+      recentTabs: sortedTabInfos.map(tab => tab.id)
     })
   } catch (error) {
     console.error("搜索标签时出错:", error)
