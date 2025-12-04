@@ -2,6 +2,7 @@ import { Storage } from "@plasmohq/storage"
 import "@plasmohq/messaging/background"
 import { cleanupIconCache } from "./services/iconService"
 import status from "./status"
+import { removePreview } from "./services/previewService"
 
 // 设置最大记录的标签数量
 const MAX_RECENT_TABS = 8
@@ -135,6 +136,9 @@ chrome.tabs.onRemoved.addListener(async (tabId) => {
 
   // 存储更新后的标签列表
   await storage.set("recentTabs", recentTabs)
+
+  // 同步移除对应的截图
+  await removePreview(tabId)
 
   console.log("标签已从历史中移除:", tabId)
 })

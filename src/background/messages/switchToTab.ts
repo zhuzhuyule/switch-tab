@@ -1,5 +1,9 @@
 import type { PlasmoMessaging } from "@plasmohq/messaging"
 
+import { savePreview } from "../services/previewService"
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
 // 请求体接口
 interface RequestBody {
   tabId: number
@@ -22,6 +26,19 @@ const handler: PlasmoMessaging.MessageHandler<RequestBody> = async (req, res) =>
     const tab = await chrome.tabs.get(tabId)
     if (tab.windowId) {
       await chrome.windows.update(tab.windowId, { focused: true })
+    }
+
+    // 激活后稍等再截屏，确保页面渲染完成
+    await sleep(200)
+    try {
+      const preview = await chrome.tabs.captureVisibleTab(tab.windowId, {
+        format: "jpeg",
+        quality: 50
+      })
+      await savePreview(tabId, preview || null)
+    } catch (captureError) {
+      console.warn("截取标签预览失败，可能是受限页面或权限不足:", captureError)
+      await savePreview(tabId, null)
     }
     
     // 发送成功响应

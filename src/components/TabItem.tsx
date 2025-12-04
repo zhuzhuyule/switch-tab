@@ -36,7 +36,8 @@ interface TabItemProps {
   tab: TabInfo
   index: number
   isRecent: boolean
-  handleTabClick: (index: number, e: React.MouseEvent<HTMLLIElement>) => void
+  handleTabClick: (index: number) => void
+  previewUrl?: string | null
   selectedIndex: number
 }
 
@@ -45,10 +46,13 @@ export const TabItem = ({
   index,
   isRecent,
   handleTabClick,
-  selectedIndex
+  selectedIndex,
+  previewUrl = null
 }: TabItemProps) => {
   const [loadImageFailed, setLoadImageFailed] = useState(false)
   const [iconData, setIconData] = useState<string | null>(null)
+  const [previewLoaded, setPreviewLoaded] = useState(false)
+  const isSelected = selectedIndex === index
   useEffect(() => {
     if (tab.favIconUrl) {
       sendToBackground({
@@ -66,49 +70,87 @@ export const TabItem = ({
   return (
     <li
       key={tab.id}
-      className={`plasmo-flex plasmo-items-center plasmo-p-3 plasmo-border-b plasmo-border-gray-100 plasmo-cursor-pointer hover:plasmo-bg-gray-50 ${
-        selectedIndex === index ? "plasmo-bg-blue-100" : ""
-      } ${isRecent && selectedIndex !== index ? "plasmo-bg-blue-50 plasmo-bg-opacity-30" : ""}`}
-      onClick={(e) => handleTabClick(index, e)}>
-      <div className="plasmo-flex plasmo-items-center plasmo-w-8 plasmo-h-8 plasmo-mr-3 plasmo-justify-center">
+      className={`plasmo-flex plasmo-gap-3 plasmo-items-center plasmo-py-3 plasmo-px-3 plasmo-border plasmo-border-slate-200 plasmo-border-b plasmo-border-gray-100 plasmo-cursor-pointer plasmo-transition-all plasmo-duration-150 ${
+        isSelected
+          ? "plasmo-bg-white"
+          : "plasmo-bg-gray-100 hover:plasmo-bg-gray-200 hover:plasmo-shadow-sm"
+      } ${isRecent && !isSelected ? "plasmo-bg-blue-50 plasmo-bg-opacity-15" : ""}`}
+      style={
+        isSelected
+          ? {
+              boxShadow:
+                "-8px 8px 16px -14px rgba(0,0,0,0.26), -8px -8px 16px -14px rgba(0,0,0,0.2)"
+            }
+          : {}
+      }
+      onClick={() => handleTabClick(index)}>
+      <div className="plasmo-flex plasmo-items-center plasmo-gap-2 plasmo-w-12 plasmo-flex-shrink-0">
         <span
-          className={`plasmo-inline-block plasmo-w-6 plasmo-h-6 plasmo-text-center plasmo-font-bold plasmo-rounded-full plasmo-leading-6 ${
+          className={`plasmo-inline-flex plasmo-w-8 plasmo-h-8 plasmo-rounded-full plasmo-items-center plasmo-justify-center plasmo-text-sm plasmo-font-semibold ${
             isRecent
-              ? "plasmo-text-white plasmo-bg-blue-500"
-              : "plasmo-text-gray-500 plasmo-bg-gray-200"
+              ? "plasmo-bg-blue-500 plasmo-text-white"
+              : "plasmo-bg-gray-200 plasmo-text-gray-700"
           }`}>
           {index + 1}
         </span>
       </div>
 
-      {iconData && !loadImageFailed ? (
-        <img
-          src={iconData}
-          alt="标签图标"
-          className="plasmo-w-8 plasmo-h-8 plasmo-mr-3 plasmo-rounded"
-          onError={() => setLoadImageFailed(true)}
-        />
-      ) : (
-        <div
-          className="plasmo-w-8 plasmo-h-8 plasmo-mr-3 plasmo-flex plasmo-items-center plasmo-justify-center plasmo-bg-gray-200 plasmo-rounded plasmo-text-lg plasmo-font-medium plasmo-text-gray-700"
-          style={{ backgroundColor: getDomainColor(tab.url) }}>
-          {tab.title.trim().charAt(0)}
-        </div>
-      )}
-
       <div className="plasmo-flex-1 plasmo-min-w-0">
-        <div className="plasmo-truncate plasmo-font-medium plasmo-text-gray-800">
-          {tab.title}
+        <div className="plasmo-flex plasmo-items-center plasmo-gap-2 plasmo-mb-1">
+          {iconData && !loadImageFailed ? (
+            <img
+              src={iconData}
+              alt="标签图标"
+              className="plasmo-w-5 plasmo-h-5 plasmo-rounded"
+              onError={() => setLoadImageFailed(true)}
+            />
+          ) : (
+            <div
+              className="plasmo-w-5 plasmo-h-5 plasmo-flex plasmo-items-center plasmo-justify-center plasmo-rounded plasmo-text-[11px] plasmo-font-medium plasmo-text-gray-700"
+              style={{ backgroundColor: getDomainColor(tab.url) }}>
+              {tab.title.trim().charAt(0)}
+            </div>
+          )}
+          <div className="plasmo-truncate plasmo-font-semibold plasmo-text-gray-800">
+            {tab.title}
+          </div>
         </div>
-        <div className="plasmo-truncate plasmo-text-xs plasmo-text-gray-500">
+        <div className="plasmo-truncate plasmo-text-[11px] plasmo-text-gray-500">
           {tab.url}
+        </div>
+        <div className="plasmo-mt-1 plasmo-flex plasmo-items-center plasmo-gap-2">
+          {isRecent && (
+            <span className="plasmo-text-[10px] plasmo-text-blue-600 plasmo-bg-blue-50 plasmo-px-2 plasmo-py-1 plasmo-rounded-full">
+              最近
+            </span>
+          )}
+          {selectedIndex === index && (
+            <span className="plasmo-text-[10px] plasmo-text-emerald-600 plasmo-bg-emerald-50 plasmo-px-2 plasmo-py-1 plasmo-rounded-full">
+              当前
+            </span>
+          )}
         </div>
       </div>
 
-      {tab.accessCount !== undefined && (
-        <div className="plasmo-ml-2 plasmo-text-xs plasmo-text-gray-500 plasmo-bg-gray-100 plasmo-px-2 plasmo-py-1 plasmo-rounded"
-          style={{ backgroundColor: getTagColor(tab.accessCount) }}>
-          {tab.accessCount}
+      {!isSelected && (
+        <div className="plasmo-w-28 plasmo-aspect-video plasmo-rounded-md plasmo-overflow-hidden plasmo-bg-gray-100 plasmo-flex plasmo-items-center plasmo-justify-center plasmo-relative plasmo-flex-shrink-0 plasmo-border plasmo-border-slate-200 plasmo-shadow-md">
+          {previewUrl ? (
+            <>
+              {!previewLoaded && (
+                <div className="plasmo-absolute plasmo-inset-0 plasmo-animate-pulse plasmo-bg-gradient-to-br plasmo-from-slate-100 plasmo-to-slate-200" />
+              )}
+              <img
+                src={previewUrl}
+                alt="页面预览"
+                className="plasmo-w-full plasmo-h-full plasmo-object-cover plasmo-transition-opacity plasmo-duration-300"
+                onLoad={() => setPreviewLoaded(true)}
+              />
+            </>
+          ) : (
+            <div className="plasmo-text-[11px] plasmo-text-gray-400">
+              无预览
+            </div>
+          )}
         </div>
       )}
     </li>
