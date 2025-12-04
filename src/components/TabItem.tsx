@@ -2,6 +2,23 @@ import { useEffect, useState } from "react"
 
 import { sendToBackground } from "@plasmohq/messaging"
 
+const ICON_CACHE_LIMIT = 10
+const iconCache = new Map<string, string>()
+
+const getCachedIcon = (url: string) => iconCache.get(url) || null
+const setCachedIcon = (url: string, data: string) => {
+  if (!url || !data) return
+  if (iconCache.has(url)) {
+    iconCache.delete(url)
+  } else if (iconCache.size >= ICON_CACHE_LIMIT) {
+    const firstKey = iconCache.keys().next().value
+    if (firstKey) {
+      iconCache.delete(firstKey)
+    }
+  }
+  iconCache.set(url, data)
+}
+
 // 生成基于域名的颜色
 const getDomainColor = (url: string) => {
   try {
@@ -55,13 +72,20 @@ export const TabItem = ({
   const isSelected = selectedIndex === index
   useEffect(() => {
     if (tab.favIconUrl) {
+      const cached = getCachedIcon(tab.favIconUrl)
+      if (cached) {
+        setLoadImageFailed(false)
+        setIconData(cached)
+        return
+      }
       sendToBackground({
         name: "getTabIcon",
         body: { url: tab.favIconUrl }
       }).then(({ success, icon }) => {
-        if (success) {
+        if (success && icon?.data) {
           setLoadImageFailed(false)
-          setIconData(icon?.data)
+          setIconData(icon.data)
+          setCachedIcon(tab.favIconUrl, icon.data)
         }
       })
     }

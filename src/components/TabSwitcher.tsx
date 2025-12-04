@@ -7,6 +7,33 @@ import { log } from "~debug-tool"
 // import { BookmarkIcon, TabIcon } from "./Icons"
 import { TabItem } from "./TabItem"
 
+const iconCache = new Map<string, string>()
+const pendingIcon = new Map<string, Promise<string | null>>()
+
+const fetchIcon = async (url: string): Promise<string | null> => {
+  if (!url) return null
+  if (iconCache.has(url)) return iconCache.get(url)
+  if (pendingIcon.has(url)) return pendingIcon.get(url)
+
+  const promise = sendToBackground({
+    name: "getTabIcon",
+    body: { url }
+  })
+    .then((res) => {
+      if (res?.success && res.icon?.data) {
+        iconCache.set(url, res.icon.data)
+        return res.icon.data as string
+      }
+      return null
+    })
+    .finally(() => {
+      pendingIcon.delete(url)
+    })
+
+  pendingIcon.set(url, promise)
+  return promise
+}
+
 // 组件属性接口
 interface TabSwitcherProps {
   onClose: () => void
@@ -35,6 +62,8 @@ export const TabSwitcher = ({
     (TabInfo | BookmarkInfo)[]
   >([])
   const [previews, setPreviews] = useState<Record<string, string | null>>({})
+  const [layoutMode, setLayoutMode] = useState<"vertical" | "horizontal">("vertical")
+  const [iconMap, setIconMap] = useState<Record<string, string>>({})
   const [selectedIndex, setSelectedIndex] = useState(0)
   const [recentTabIds, setRecentTabIds] = useState<number[]>([])
   const [displayLimit, setDisplayLimit] = useState(6)
@@ -84,10 +113,33 @@ export const TabSwitcher = ({
           console.error("获取预览图失败:", previewError)
           setPreviews({})
         }
+
+        // 预取横版需要的图标，减少重复请求
+        const urls = tabResponse.tabs
+          .map((t) => t.favIconUrl)
+          .filter((u) => typeof u === "string" && u.length > 0)
+        const unique = Array.from(new Set(urls))
+        Promise.all(
+          unique.map(async (url) => {
+            const data = await fetchIcon(url)
+            return { url, data }
+          })
+        ).then((results) => {
+          const next: Record<string, string> = {}
+          results.forEach(({ url, data }) => {
+            if (data) next[url] = data
+          })
+          setIconMap((prev) => ({ ...prev, ...next }))
+        })
       }
 
       if (settingResponse?.success && settingResponse.settings?.displayLimit) {
         setDisplayLimit(settingResponse.settings.displayLimit)
+        setLayoutMode(
+          settingResponse.settings.layoutMode === "horizontal"
+            ? "horizontal"
+            : "vertical"
+        )
       }
     } catch (error) {
       console.error("获取数据时出错:", error)
@@ -100,41 +152,42 @@ export const TabSwitcher = ({
     (async () => {
       // 合并结果，标签优先显示
       const allItems = [...tabs]
-  
+
       // 排序：先最近标签，再其他标签，最后书签
       allItems.sort((a, b) => {
         // 区分标签和书签
         const aIsTab = "tabId" in a || ("id" in a && typeof a.id === "number")
         const bIsTab = "tabId" in b || ("id" in b && typeof b.id === "number")
-  
+
         // 标签优先于书签
         if (aIsTab && !bIsTab) return -1
         if (!aIsTab && bIsTab) return 1
-  
+
         // 如果两者都是标签，按照最近访问排序
         if (aIsTab && bIsTab) {
           const aId = ("tabId" in a ? a.tabId : a.id) as number
           const bId = ("tabId" in b ? b.tabId : b.id) as number
-  
+
           const aIsRecent = recentTabIds.includes(aId)
           const bIsRecent = recentTabIds.includes(bId)
-  
+
           if (aIsRecent && !bIsRecent) return -1
           if (!aIsRecent && bIsRecent) return 1
-  
+
           if (aIsRecent && bIsRecent) {
             return recentTabIds.indexOf(aId) - recentTabIds.indexOf(bId)
           }
         }
-  
-      // 默认按标题排序
-      return a.title.localeCompare(b.title)
-    })
 
-      setFilteredItems(allItems.slice(1, displayLimit + 1))
+        // 默认按标题排序
+        return a.title.localeCompare(b.title)
+      })
+
+      const limit = Math.max(1, Math.min(displayLimit, 8))
+      setFilteredItems(allItems.slice(0, limit))
       setSelectedIndex(0)
     })()
-  }, [tabs,  recentTabIds, displayLimit])
+  }, [tabs, recentTabIds, displayLimit])
 
   // 处理选中项的切换
   const handleItemSelect = async (index: number) => {
@@ -270,7 +323,7 @@ export const TabSwitcher = ({
 
   // 定义容器样式类名
   const containerClassName = isPopup
-    ? "plasmo-flex plasmo-flex-col plasmo-w-[880px] plasmo-max-w-full plasmo-overflow-hidden"
+    ? "plasmo-flex plasmo-flex-col plasmo-w-[1000px] plasmo-max-w-[1500px] plasmo-overflow-hidden"
     : "plasmo-fixed plasmo-inset-0 plasmo-flex plasmo-items-center plasmo-justify-center plasmo-bg-black plasmo-bg-opacity-50 plasmo-z-50"
 
   const [isVisible, setIsVisible] = useState(false)
@@ -284,7 +337,7 @@ export const TabSwitcher = ({
   // 定义列表容器样式类名
   const listContainerClassName = isPopup
     ? "plasmo-w-full plasmo-h-full plasmo-flex plasmo-flex-col plasmo-bg-white plasmo-overflow-hidden plasmo-rounded-lg custom-base"
-    : "plasmo-w-[900px] plasmo-max-w-[98vw] plasmo-bg-white plasmo-rounded-lg plasmo-shadow-xl plasmo-overflow-hidden"
+    : "plasmo-w-full plasmo-max-w-[1500px] plasmo-bg-white plasmo-rounded-lg plasmo-shadow-xl plasmo-overflow-hidden"
 
   // 定义列表样式类名
   const listClassName = isPopup
@@ -311,6 +364,109 @@ export const TabSwitcher = ({
     )
   }
 
+  const renderHorizontal = () => (
+    <div className="plasmo-w-full plasmo-max-w-[1500px] plasmo-mx-auto plasmo-p-4">
+      <div className="plasmo-flex plasmo-flex-wrap plasmo-gap-4 plasmo-justify-center plasmo-hide-scrollbar">
+        {filteredItems.map((item, index) => {
+          const tabId = "tabId" in item ? item.tabId : item.id
+          const previewUrl =
+            typeof tabId === "number" ? previews[String(tabId)] || null : null
+          const isActive = index === selectedIndex
+          return (
+            <button
+              key={item.id}
+              className={`plasmo-relative plasmo-flex plasmo-flex-col plasmo-rounded-xl plasmo-border plasmo-overflow-hidden plasmo-transition-all plasmo-duration-200 plasmo-basis-[200px] plasmo-flex-grow plasmo-max-w-[240px] ${isActive
+                ? "plasmo-bg-white plasmo-border-slate-200 plasmo-shadow-lg plasmo-scale-[1.03]"
+                : "plasmo-bg-gray-100 plasmo-border-gray-200 hover:plasmo-shadow-sm"
+                }`}
+              onClick={() => handleItemSelect(index)}>
+              <span
+                className="plasmo-absolute plasmo-top-1 plasmo-left-1 plasmo-inline-flex plasmo-items-center plasmo-justify-center plasmo-text-[10px] plasmo-font-semibold plasmo-text-white plasmo-px-1.5 plasmo-h-5 plasmo-leading-none plasmo-shadow-sm plasmo-pointer-events-none"
+                style={{
+                  backgroundColor: recentTabIds.includes(tabId as number)
+                    ? "#2563EB"
+                    : "#111827",
+                  borderTopRightRadius: "8px",
+                  borderBottomRightRadius: "8px"
+                }}>
+                {index + 1}
+              </span>
+              <div className="plasmo-w-full plasmo-aspect-video plasmo-bg-gray-200 plasmo-flex plasmo-items-center plasmo-justify-center">
+                {previewUrl ? (
+                  <img
+                    src={previewUrl}
+                    alt="tab preview"
+                    className="plasmo-w-full plasmo-h-full plasmo-object-cover"
+                  />
+                ) : (
+                  <div className="plasmo-text-xs plasmo-text-gray-500">无预览</div>
+                )}
+              </div>
+              <div className="plasmo-p-3 plasmo-text-left plasmo-space-y-1">
+                <div className="plasmo-flex plasmo-items-center plasmo-gap-2">
+                  {("favIconUrl" in item || "url" in item) && (item as any).favIconUrl ? (
+                    <img
+                      src={iconMap[(item as any).favIconUrl] || (item as any).favIconUrl}
+                      alt="icon"
+                      className="plasmo-w-4 plasmo-h-4 plasmo-rounded-sm"
+                    />
+                  ) : (
+                    <div className="plasmo-w-4 plasmo-h-4 plasmo-rounded-sm plasmo-bg-gray-300" />
+                  )}
+                  <div className="plasmo-truncate plasmo-text-sm plasmo-font-semibold plasmo-text-gray-900">
+                    {item.title || "无标题"}
+                  </div>
+                </div>
+                <div className="plasmo-truncate plasmo-text-[11px] plasmo-text-gray-500">
+                  {decodeUrl(item.url || "")}
+                </div>
+              </div>
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+
+  const renderVertical = () => (
+    <div className="plasmo-flex plasmo-h-full plasmo-overflow-hidden">
+      <div className={`${listClassName} plasmo-flex-1`}>
+        {filteredItems.map((item, index) => renderItem(item, index))}
+      </div>
+      <div className="plasmo-flex-1 plasmo-bg-white plasmo-relative plasmo-p-4 plasmo-flex plasmo-flex-col plasmo-gap-3 plasmo-min-h-[320px] plasmo-max-w-[50vw]">
+        <div className="plasmo-flex-1 plasmo-flex plasmo-items-center plasmo-justify-center plasmo-overflow-visible">
+          <div className="plasmo-w-full plasmo-relative plasmo-overflow-visible">
+            <div
+              key={selectedTabId ?? "none"}
+              className="plasmo-w-full plasmo-aspect-video plasmo-rounded-xl plasmo-overflow-hidden plasmo-bg-gradient-to-br plasmo-from-slate-100 plasmo-to-slate-200 plasmo-shadow-md plasmo-border plasmo-border-slate-200 slide-in">
+              {selectedPreview ? (
+                <img
+                  src={selectedPreview}
+                  alt="当前标签预览"
+                  className="plasmo-w-full plasmo-h-full plasmo-object-cover"
+                />
+              ) : (
+                <div className="plasmo-w-full plasmo-h-full plasmo-flex plasmo-items-center plasmo-justify-center plasmo-text-sm plasmo-text-gray-400">
+                  暂无预览
+                </div>
+              )}
+            </div>
+            {selectedItem && (
+              <div className="plasmo-absolute plasmo-top-full plasmo-left-0 plasmo-right-0 plasmo-pt-2 plasmo-h-0 plasmo-leading-[0] plasmo-overflow-visible plasmo-text-left">
+                <div className="plasmo-text-sm plasmo-font-semibold plasmo-text-gray-900 plasmo-break-words plasmo-leading-[1.35]">
+                  {selectedItem.title || "无标题"}
+                </div>
+                <div className="plasmo-text-[11px] plasmo-text-gray-500 plasmo-break-words plasmo-leading-[1.3]">
+                  {decodeUrl(selectedItem.url || "")}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+
   return (
     <div
       className={containerClassName}
@@ -329,43 +485,10 @@ export const TabSwitcher = ({
           <div className="plasmo-p-8 plasmo-text-center plasmo-text-gray-500">
             {tabs.length === 0 ? "没有标签记录" : "输入关键词搜索标签"}
           </div>
+        ) : layoutMode === "horizontal" ? (
+          renderHorizontal()
         ) : (
-          <div className="plasmo-flex plasmo-h-full plasmo-overflow-hidden">
-            <div className={`${listClassName} plasmo-flex-1`}>
-              {filteredItems.map((item, index) => renderItem(item, index))}
-            </div>
-            <div className="plasmo-w-[420px] plasmo-min-w-[360px] plasmo-bg-white plasmo-relative plasmo-p-4 plasmo-flex plasmo-flex-col plasmo-min-h-[320px]">
-              <div className="plasmo-flex-1 plasmo-flex plasmo-items-center plasmo-justify-center plasmo-overflow-visible">
-                <div className="plasmo-w-full plasmo-relative plasmo-overflow-visible">
-                  <div
-                    key={selectedTabId ?? "none"}
-                    className="plasmo-w-full plasmo-aspect-video plasmo-rounded-xl plasmo-overflow-hidden plasmo-bg-gradient-to-br plasmo-from-slate-100 plasmo-to-slate-200 plasmo-shadow-md plasmo-border plasmo-border-slate-200 slide-in">
-                    {selectedPreview ? (
-                      <img
-                        src={selectedPreview}
-                        alt="当前标签预览"
-                        className="plasmo-w-full plasmo-h-full plasmo-object-cover"
-                      />
-                    ) : (
-                      <div className="plasmo-w-full plasmo-h-full plasmo-flex plasmo-items-center plasmo-justify-center plasmo-text-sm plasmo-text-gray-400">
-                        暂无预览
-                      </div>
-                    )}
-                  </div>
-                  {selectedItem && (
-                    <div className="plasmo-absolute plasmo-top-full plasmo-left-0 plasmo-right-0 plasmo-pt-2 plasmo-h-0 plasmo-leading-[0] plasmo-overflow-visible plasmo-text-left">
-                      <div className="plasmo-text-sm plasmo-font-semibold plasmo-text-gray-900 plasmo-break-words plasmo-leading-[1.35]">
-                        {selectedItem.title || "无标题"}
-                      </div>
-                      <div className="plasmo-text-[11px] plasmo-text-gray-500 plasmo-break-words plasmo-leading-[1.3]">
-                        {decodeUrl(selectedItem.url || "")}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
+          renderVertical()
         )}
       </div>
     </div>

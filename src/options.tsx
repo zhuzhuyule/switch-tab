@@ -4,11 +4,12 @@ import { sendToBackground } from "@plasmohq/messaging"
 
 import "~style.css"
 
-const MIN_LIMIT = 6
-const MAX_LIMIT = 20
+const MIN_LIMIT = 4
+const MAX_LIMIT = 8
 
 function IndexOptions() {
   const [displayLimit, setDisplayLimit] = useState(6)
+  const [layoutMode, setLayoutMode] = useState<"vertical" | "horizontal">("vertical")
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
@@ -22,6 +23,9 @@ function IndexOptions() {
       const res = await sendToBackground({ name: "getSettings" })
       if (res?.success && res.settings?.displayLimit) {
         setDisplayLimit(res.settings.displayLimit)
+        setLayoutMode(
+          res.settings.layoutMode === "horizontal" ? "horizontal" : "vertical"
+        )
       } else {
         setError("无法获取设置")
       }
@@ -44,7 +48,7 @@ function IndexOptions() {
     try {
       const res = await sendToBackground({
         name: "setSettings",
-        body: { displayLimit }
+        body: { displayLimit, layoutMode }
       })
       if (res?.success) {
         setMessage("设置已保存")
@@ -66,7 +70,7 @@ function IndexOptions() {
           <div>
             <h1 className="plasmo-text-2xl plasmo-font-semibold">Recent Switch 设置</h1>
             <p className="plasmo-text-sm plasmo-text-slate-500">
-              配置在切换界面中显示的最近标签数量（至少支持 6 个）。
+              配置在切换界面中显示的最近标签数量（至少支持 4 个）。
             </p>
           </div>
           <button
@@ -112,6 +116,35 @@ function IndexOptions() {
                 设定在切换面板中显示的最近标签数量，至少为 6，建议保持较小以便快速识别。
               </p>
             </label>
+
+            <div className="plasmo-grid plasmo-grid-cols-1 sm:plasmo-grid-cols-2 plasmo-gap-3 plasmo-items-start">
+              <div className="plasmo-space-y-2">
+                <span className="plasmo-text-sm plasmo-text-slate-600">布局方向</span>
+                <div className="plasmo-flex plasmo-gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setLayoutMode("vertical")}
+                    className={`plasmo-flex-1 plasmo-rounded-lg plasmo-border plasmo-py-2 plasmo-text-sm plasmo-font-medium plasmo-transition ${layoutMode === "vertical"
+                        ? "plasmo-bg-blue-50 plasmo-border-blue-200 plasmo-text-blue-700"
+                        : "plasmo-bg-white plasmo-border-slate-200 hover:plasmo-border-slate-300"
+                      }`}>
+                    竖版
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setLayoutMode("horizontal")}
+                    className={`plasmo-flex-1 plasmo-rounded-lg plasmo-border plasmo-py-2 plasmo-text-sm plasmo-font-medium plasmo-transition ${layoutMode === "horizontal"
+                        ? "plasmo-bg-blue-50 plasmo-border-blue-200 plasmo-text-blue-700"
+                        : "plasmo-bg-white plasmo-border-slate-200 hover:plasmo-border-slate-300"
+                      }`}>
+                    横版
+                  </button>
+                </div>
+                <p className="plasmo-text-xs plasmo-text-slate-500">
+                  竖版以列表形式展示，横版以卡片预览方式展示。
+                </p>
+              </div>
+            </div>
 
             <div className="plasmo-flex plasmo-items-center plasmo-gap-3">
               <button

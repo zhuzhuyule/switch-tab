@@ -1,9 +1,11 @@
 import type { PlasmoMessaging } from "@plasmohq/messaging"
 import { Storage } from "@plasmohq/storage"
 
-const MIN_LIMIT = 6
+const MIN_LIMIT = 1
+const MAX_LIMIT = 8
 const DEFAULT_SETTINGS = {
-  displayLimit: 6
+  displayLimit: 6,
+  layoutMode: "vertical" as "vertical" | "horizontal"
 }
 
 const storage = new Storage({ area: "local" })
@@ -18,8 +20,13 @@ const handler: PlasmoMessaging.MessageHandler = async (req, res) => {
       await storage.set("settings", DEFAULT_SETTINGS)
     }
 
+    const displayLimitRaw = saved.displayLimit || DEFAULT_SETTINGS.displayLimit
     const normalized = {
-      displayLimit: Math.max(saved.displayLimit || DEFAULT_SETTINGS.displayLimit, MIN_LIMIT)
+      displayLimit: Math.max(
+        MIN_LIMIT,
+        Math.min(displayLimitRaw, MAX_LIMIT)
+      ),
+      layoutMode: saved.layoutMode === "horizontal" ? "horizontal" : "vertical"
     }
 
     // 持久化修正后的值
