@@ -70,7 +70,7 @@ export const TabItem = ({
   return (
     <li
       key={tab.id}
-      className={`plasmo-flex plasmo-gap-3 plasmo-items-center plasmo-py-3 plasmo-px-3 plasmo-border plasmo-border-slate-200 plasmo-border-b plasmo-border-gray-100 plasmo-cursor-pointer plasmo-transition-all plasmo-duration-150 ${isSelected
+      className={`plasmo-relative plasmo-flex plasmo-gap-3 plasmo-items-center plasmo-py-3 plasmo-px-3 plasmo-border plasmo-border-slate-200 plasmo-border-b plasmo-border-gray-100 plasmo-cursor-pointer plasmo-h-20 plasmo-transition-all plasmo-duration-200 ${isSelected
         ? "plasmo-bg-white plasmo-border-r-transparent"
         : "plasmo-bg-gray-300 hover:plasmo-bg-gray-200 hover:plasmo-shadow-sm"
         } ${isRecent && !isSelected ? "plasmo-bg-blue-50 plasmo-bg-opacity-15" : ""}`}
@@ -78,55 +78,45 @@ export const TabItem = ({
         isSelected
           ? {
             boxShadow:
-              "-8px 8px 16px -14px rgba(0,0,0,0.8), -8px -8px 16px -14px rgba(0,0,0,0.5)"
+              "-8px 8px 16px -14px rgba(0,0,0,0.8), -8px -8px 16px -14px rgba(0,0,0,0.5)",
+            transition: "box-shadow 0.25s ease, background-color 0.2s ease"
           }
-          : {}
+          : {
+            boxShadow: "0 3px 8px -8px rgba(0,0,0,0.45)",
+            transition: "box-shadow 0.25s ease, background-color 0.2s ease"
+          }
       }
       onClick={() => handleTabClick(index)}>
-      <div className="plasmo-flex plasmo-items-center plasmo-gap-2 plasmo-w-12 plasmo-flex-shrink-0">
-        <span
-          className={`plasmo-inline-flex plasmo-w-8 plasmo-h-8 plasmo-rounded-full plasmo-items-center plasmo-justify-center plasmo-text-sm plasmo-font-semibold ${isRecent
-            ? "plasmo-bg-blue-500 plasmo-text-white"
-            : "plasmo-bg-gray-200 plasmo-text-gray-700"
-            }`}>
-          {index + 1}
-        </span>
+      <span
+        className="plasmo-absolute plasmo-top-0 plasmo-left-0 plasmo-flex plasmo-items-center plasmo-justify-center plasmo-text-[12px] plasmo-font-semibold plasmo-text-white plasmo-h-5 plasmo-w-5 plasmo-shadow-lg plasmo-bg-blue-400 plasmo-rounded"
+      >
+        {index + 1}
+      </span>
+      <div className="plasmo-flex plasmo-items-center plasmo-justify-center plasmo-w-12 plasmo-flex-shrink-0">
+        {iconData && !loadImageFailed ? (
+          <img
+            src={iconData}
+            alt="标签图标"
+            className="plasmo-w-8 plasmo-h-8 plasmo-rounded"
+            onError={() => setLoadImageFailed(true)}
+          />
+        ) : (
+          <div
+            className="plasmo-w-8 plasmo-h-8 plasmo-flex plasmo-items-center plasmo-justify-center plasmo-rounded plasmo-text-sm plasmo-font-semibold plasmo-text-gray-700"
+            style={{ backgroundColor: getDomainColor(tab.url) }}>
+            {tab.title.trim().charAt(0)}
+          </div>
+        )}
       </div>
 
       <div className="plasmo-flex-1 plasmo-min-w-0">
         <div className="plasmo-flex plasmo-items-center plasmo-gap-2 plasmo-mb-1">
-          {iconData && !loadImageFailed ? (
-            <img
-              src={iconData}
-              alt="标签图标"
-              className="plasmo-w-5 plasmo-h-5 plasmo-rounded"
-              onError={() => setLoadImageFailed(true)}
-            />
-          ) : (
-            <div
-              className="plasmo-w-5 plasmo-h-5 plasmo-flex plasmo-items-center plasmo-justify-center plasmo-rounded plasmo-text-[11px] plasmo-font-medium plasmo-text-gray-700"
-              style={{ backgroundColor: getDomainColor(tab.url) }}>
-              {tab.title.trim().charAt(0)}
-            </div>
-          )}
           <div className="plasmo-truncate plasmo-font-semibold plasmo-text-gray-800">
             {tab.title}
           </div>
         </div>
         <div className="plasmo-truncate plasmo-text-[11px] plasmo-text-gray-500">
           {tab.url}
-        </div>
-        <div className="plasmo-mt-1 plasmo-flex plasmo-items-center plasmo-gap-2">
-          {isRecent && (
-            <span className="plasmo-text-[10px] plasmo-text-blue-600 plasmo-bg-blue-50 plasmo-px-2 plasmo-py-1 plasmo-rounded-full">
-              最近
-            </span>
-          )}
-          {selectedIndex === index && (
-            <span className="plasmo-text-[10px] plasmo-text-emerald-600 plasmo-bg-emerald-50 plasmo-px-2 plasmo-py-1 plasmo-rounded-full">
-              当前
-            </span>
-          )}
         </div>
       </div>
 
