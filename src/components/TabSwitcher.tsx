@@ -49,6 +49,15 @@ export const TabSwitcher = ({
   const selectedPreview =
     typeof selectedTabId === "number" ? previews[String(selectedTabId)] || null : null
 
+  const decodeUrl = (url: string) => {
+    if (!url) return ""
+    try {
+      return decodeURIComponent(url)
+    } catch {
+      return url
+    }
+  }
+
   // 获取所有标签和书签
   const fetchAllItems = async () => {
     try {
@@ -261,7 +270,7 @@ export const TabSwitcher = ({
 
   // 定义容器样式类名
   const containerClassName = isPopup
-    ? "plasmo-flex plasmo-flex-col plasmo-w-[880px] plasmo-max-w-full plasmo-max-h-full plasmo-overflow-hidden"
+    ? "plasmo-flex plasmo-flex-col plasmo-w-[880px] plasmo-max-w-full plasmo-overflow-hidden"
     : "plasmo-fixed plasmo-inset-0 plasmo-flex plasmo-items-center plasmo-justify-center plasmo-bg-black plasmo-bg-opacity-50 plasmo-z-50"
 
   const [isVisible, setIsVisible] = useState(false)
@@ -325,21 +334,35 @@ export const TabSwitcher = ({
             <div className={`${listClassName} plasmo-flex-1`}>
               {filteredItems.map((item, index) => renderItem(item, index))}
             </div>
-            <div className="plasmo-w-[420px] plasmo-min-w-[360px] plasmo-bg-white plasmo-flex plasmo-items-center plasmo-justify-center plasmo-p-4">
-              <div
-                key={selectedTabId ?? "none"}
-                className="plasmo-w-full plasmo-aspect-video plasmo-rounded-xl plasmo-overflow-hidden plasmo-bg-gradient-to-br plasmo-from-slate-100 plasmo-to-slate-200 plasmo-shadow-md plasmo-border plasmo-border-slate-200 slide-in">
-                {selectedPreview ? (
-                  <img
-                    src={selectedPreview}
-                    alt="当前标签预览"
-                    className="plasmo-w-full plasmo-h-full plasmo-object-cover"
-                  />
-                ) : (
-                  <div className="plasmo-w-full plasmo-h-full plasmo-flex plasmo-items-center plasmo-justify-center plasmo-text-sm plasmo-text-gray-400">
-                    暂无预览
+            <div className="plasmo-w-[420px] plasmo-min-w-[360px] plasmo-bg-white plasmo-relative plasmo-p-4 plasmo-flex plasmo-flex-col plasmo-min-h-[320px]">
+              <div className="plasmo-flex-1 plasmo-flex plasmo-items-center plasmo-justify-center plasmo-overflow-visible">
+                <div className="plasmo-w-full plasmo-relative plasmo-overflow-visible">
+                  <div
+                    key={selectedTabId ?? "none"}
+                    className="plasmo-w-full plasmo-aspect-video plasmo-rounded-xl plasmo-overflow-hidden plasmo-bg-gradient-to-br plasmo-from-slate-100 plasmo-to-slate-200 plasmo-shadow-md plasmo-border plasmo-border-slate-200 slide-in">
+                    {selectedPreview ? (
+                      <img
+                        src={selectedPreview}
+                        alt="当前标签预览"
+                        className="plasmo-w-full plasmo-h-full plasmo-object-cover"
+                      />
+                    ) : (
+                      <div className="plasmo-w-full plasmo-h-full plasmo-flex plasmo-items-center plasmo-justify-center plasmo-text-sm plasmo-text-gray-400">
+                        暂无预览
+                      </div>
+                    )}
                   </div>
-                )}
+                  {selectedItem && (
+                    <div className="plasmo-absolute plasmo-top-full plasmo-left-0 plasmo-right-0 plasmo-pt-2 plasmo-h-0 plasmo-leading-[0] plasmo-overflow-visible plasmo-text-left">
+                      <div className="plasmo-text-sm plasmo-font-semibold plasmo-text-gray-900 plasmo-break-words plasmo-leading-[1.35]">
+                        {selectedItem.title || "无标题"}
+                      </div>
+                      <div className="plasmo-text-[11px] plasmo-text-gray-500 plasmo-break-words plasmo-leading-[1.3]">
+                        {decodeUrl(selectedItem.url || "")}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>

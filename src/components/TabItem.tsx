@@ -70,27 +70,25 @@ export const TabItem = ({
   return (
     <li
       key={tab.id}
-      className={`plasmo-flex plasmo-gap-3 plasmo-items-center plasmo-py-3 plasmo-px-3 plasmo-border plasmo-border-slate-200 plasmo-border-b plasmo-border-gray-100 plasmo-cursor-pointer plasmo-transition-all plasmo-duration-150 ${
-        isSelected
-          ? "plasmo-bg-white"
-          : "plasmo-bg-gray-100 hover:plasmo-bg-gray-200 hover:plasmo-shadow-sm"
-      } ${isRecent && !isSelected ? "plasmo-bg-blue-50 plasmo-bg-opacity-15" : ""}`}
+      className={`plasmo-flex plasmo-gap-3 plasmo-items-center plasmo-py-3 plasmo-px-3 plasmo-border plasmo-border-slate-200 plasmo-border-b plasmo-border-gray-100 plasmo-cursor-pointer plasmo-transition-all plasmo-duration-150 ${isSelected
+        ? "plasmo-bg-white plasmo-border-r-transparent"
+        : "plasmo-bg-gray-300 hover:plasmo-bg-gray-200 hover:plasmo-shadow-sm"
+        } ${isRecent && !isSelected ? "plasmo-bg-blue-50 plasmo-bg-opacity-15" : ""}`}
       style={
         isSelected
           ? {
-              boxShadow:
-                "-8px 8px 16px -14px rgba(0,0,0,0.26), -8px -8px 16px -14px rgba(0,0,0,0.2)"
-            }
+            boxShadow:
+              "-8px 8px 16px -14px rgba(0,0,0,0.8), -8px -8px 16px -14px rgba(0,0,0,0.5)"
+          }
           : {}
       }
       onClick={() => handleTabClick(index)}>
       <div className="plasmo-flex plasmo-items-center plasmo-gap-2 plasmo-w-12 plasmo-flex-shrink-0">
         <span
-          className={`plasmo-inline-flex plasmo-w-8 plasmo-h-8 plasmo-rounded-full plasmo-items-center plasmo-justify-center plasmo-text-sm plasmo-font-semibold ${
-            isRecent
-              ? "plasmo-bg-blue-500 plasmo-text-white"
-              : "plasmo-bg-gray-200 plasmo-text-gray-700"
-          }`}>
+          className={`plasmo-inline-flex plasmo-w-8 plasmo-h-8 plasmo-rounded-full plasmo-items-center plasmo-justify-center plasmo-text-sm plasmo-font-semibold ${isRecent
+            ? "plasmo-bg-blue-500 plasmo-text-white"
+            : "plasmo-bg-gray-200 plasmo-text-gray-700"
+            }`}>
           {index + 1}
         </span>
       </div>
